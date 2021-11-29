@@ -10,6 +10,9 @@ import "../../../interfaces/IBean.sol";
 import "../../../libraries/LibInternal.sol";
 import "../../../libraries/LibIncentive.sol";
 
+// withdrawing when you vote is inefficient right now
+// withdraw while voted function
+
 /**
  * @author Publius
  * @title Governance handles propsing, voting for and committing BIPs as well as pausing/unpausing.
@@ -22,6 +25,7 @@ contract GovernanceFacet is VotingBooth {
 
     event Proposal(address indexed account, uint32 indexed bip, uint256 indexed start, uint256 period);
     event Vote(address indexed account, uint32 indexed bip, uint256 roots);
+    event VoteList(address indexed account, uint32[] indexed bips, uint256 roots);
     event Unvote(address indexed account, uint32 indexed bip, uint256 roots);
     event Commit(address indexed account, uint32 indexed bip);
     event Incentivization(address indexed account, uint256 beans);
@@ -75,6 +79,35 @@ contract GovernanceFacet is VotingBooth {
         placeLock(msg.sender, bip);
 
         emit Vote(msg.sender, bip, balanceOfRoots(msg.sender));
+    }
+
+    /**
+     * Multiple Votes
+    **/
+    // Takes in a list of bips and votes on them
+    function voteList(uint32[] calldata bip_list) public {
+        require(balanceOfRoots(msg.sender) > 0, "Governance: Must have Stalk.");
+
+        uint i = 0;
+        for (i = 0; i < bip_list.length; i++) {
+            uint32 bip = bip_list[i];
+            require(isNominated(bip), "Governance: Not nominated.");
+            require(isActive(bip), "Governance: Ended.");
+            // Flip vote status for BIP based on whether it is voted or not voted
+            if (s.g.voted[bip][msg.sender]) {
+                unrecordVote(msg.sender, bip);
+            } else {
+                recordVote(msg.sender, bip);
+            }
+            
+            uint32 lock = s.a[msg.sender].lockedUntil;
+            uint32 newLock = startFor(bip) + periodFor(bip);
+            if (newLock > lock) {
+                s.a[msg.sender].lockedUntil = newLock;
+            }
+        }
+
+        emit VoteList(msg.sender, bip_list, balanceOfRoots(msg.sender));
     }
 
     function unvote(uint32 bip) external {
