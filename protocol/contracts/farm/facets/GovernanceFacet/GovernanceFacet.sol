@@ -10,9 +10,6 @@ import "../../../interfaces/IBean.sol";
 import "../../../libraries/LibInternal.sol";
 import "../../../libraries/LibIncentive.sol";
 
-// withdrawing when you vote is inefficient right now
-// withdraw while voted function
-
 /**
  * @author Publius
  * @title Governance handles propsing, voting for and committing BIPs as well as pausing/unpausing.
@@ -99,7 +96,7 @@ contract GovernanceFacet is VotingBooth {
             } else {
                 recordVote(msg.sender, bip);
             }
-            
+
             uint32 lock = s.a[msg.sender].lockedUntil;
             uint32 newLock = startFor(bip) + periodFor(bip);
             if (newLock > lock) {
