@@ -59,6 +59,7 @@ describe('Governance', function () {
 
     await this.bean.mint(userAddress, '1000000');
     await this.bean.mint(user2Address, '1000000');
+    await this.bean.mint(user3Address, '1000000');
     await this.bean.connect(user).approve(this.governance.address, '100000000000');
     await this.bean.connect(owner).approve(this.governance.address, '100000000000');
   });
@@ -66,10 +67,13 @@ describe('Governance', function () {
   beforeEach(async function () {
     await this.season.resetAccount(userAddress)
     await this.season.resetAccount(user2Address)
+    await this.season.resetAccount(user3Address)
     await this.season.resetAccount(ownerAddress)
     await this.season.resetState();
     await this.season.siloSunrise(0);
     await this.silo.depositSiloAssetsE(userAddress, '500', '1000000');
+    await this.silo.depositSiloAssetsE(user2Address, '500', '1000000');
+    await this.silo.depositSiloAssetsE(user3Address, '500', '1000000');
     await this.silo.depositSiloAssetsE(ownerAddress, '500', '1000000');
   });
 
@@ -79,9 +83,22 @@ describe('Governance', function () {
       await propose(owner, this.governance, this.bip);
       await propose(owner, this.governance, this.bip);
       await propose(owner, this.governance, this.bip);
+      await propose(owner, this.governance, this.bip);
+
       await this.governance.connect(user).vote(0);
       await this.governance.connect(user).voteList([1, 2, 3]);
-      await this.governance.connect(user).voteList([1, 2]);
+      await this.governance.connect(user).vote(4);
+      await this.governance.connect(user).unvote(1);
+      await this.governance.connect(user).unvoteList([2, 3, 4]);
+
+      await this.governance.connect(user2).vote(0);
+      await this.governance.connect(user2).vote(1);
+      await this.governance.connect(user2).vote(2);
+      await this.governance.connect(user2).unvoteList([0, 1, 2]);
+
+      await this.governance.connect(user3).vote(0);
+      await this.governance.connect(user3).vote(1);
+      await this.governance.connect(user3).voteUnvoteList([0, 1, 2]);
     });
 
     it('sets vote counter correctly', async function () {
@@ -101,16 +118,33 @@ describe('Governance', function () {
 
     it('records vote in voteList', async function () {
       expect(await this.governance.voted(userAddress, 0)).to.equal(true);
-      expect(await this.governance.voted(userAddress, 3)).to.equal(true);
     });
 
     it('records unvotes in voteList', async function () {
       expect(await this.governance.voted(userAddress, 1)).to.equal(false);
       expect(await this.governance.voted(userAddress, 2)).to.equal(false);
+      expect(await this.governance.voted(userAddress, 3)).to.equal(false);
+      expect(await this.governance.voted(userAddress, 4)).to.equal(false);
+
+      expect(await this.governance.voted(user2Address, 0)).to.equal(false);
+      expect(await this.governance.voted(user2Address, 1)).to.equal(false);
+
+      expect(await this.governance.voted(user3Address, 0)).to.equal(false);
+      expect(await this.governance.voted(user3Address, 1)).to.equal(false);
+      expect(await this.governance.voted(user3Address, 2)).to.equal(true);
     })
 
     it('voter cant unvote', async function () {
       expect(await this.silo.locked(userAddress)).to.equal(true);
     });
+
+    it('voter can revote', async function () {
+      expect(await this.silo.locked(user2Address)).to.equal(false);
+    });
+
+    // it('unvoteVoteList emits correct event', async function () {
+    //   await expect(this.governance.connect(user3).voteUnvoteList([0, 1, 2])).to.emit(this.governance, 'VoteList')
+    //   .withArgs(user3Address, [0, 1, 2], [false, false, true], (await this.silo.balanceOfRoots(user3Address)));
+    // })
   });
 });
