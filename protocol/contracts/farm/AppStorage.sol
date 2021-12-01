@@ -161,8 +161,10 @@ contract Storage {
     }
 
     struct Listing {
-        uint232 expiry;
-        uint24 price;
+        uint expiry;
+        uint price;
+        uint amount;
+        bool inEth;
     }
 }
 
