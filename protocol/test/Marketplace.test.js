@@ -36,22 +36,79 @@ describe('Marketplace', function () {
 
   describe("List Plot", async function () {
     beforeEach (async function () {
-      await this.field.incrementTotalSoilEE('1000');
+      await this.field.incrementTotalSoilEE('10000');
       await this.field.connect(user).sowBeans('1000');
+      await this.field.connect(user2).sowBeans('1000');
+      await this.field.connect(user).sowBeans('1000');
+      await this.field.connect(user).sowBeans('1500');
+      await this.field.connect(user2).sowBeans('750');
 
-      this.result = await this.marketplace.connect(user).list('0', '1', '1000000');
+      this.result = await this.marketplace.connect(user).list('0','1000',true,'1','1000');
     });
 
     it('Emits a List event', async function () {
-      expect(this.result).to.emit(this.marketplace, 'CreateListing').withArgs(userAddress, '0', 1, '1000000');
+      expect(this.result).to.emit(this.marketplace, 'CreateListing').withArgs(userAddress, '0', 1000, true, 1, 1000);
     });
 
     it('Lists the product', async function () {
       const listing = await this.marketplace.listing(0);
       expect(listing.price).to.equal(1);
-      expect(listing.expiry).to.equal('1000000');
+      expect(listing.amount).to.equal(1000);
+      expect(listing.expiry).to.equal(1000);
+      expect(listing.inEth).to.equal(true);
     });
 
+    it('Does not list since does not own the plot', async function () {
+      await expect(this.marketplace.connect(user2).list('0','1000',true,'1','2000')).to.be.revertedWith("Field: Plot not owned by user.");
+    });
+
+    it('Does not list since wants to list zero pods', async function () {
+      await expect(this.marketplace.connect(user2).list('1000','0',true,'1','2000')).to.be.revertedWith("Marketplace: Must list atleast one pod from the plot.");
+    });
+
+    it('Does not list since wants to list more pods than in the plot', async function () {
+      await expect(this.marketplace.connect(user2).list('1000','2000',true,'1','2000')).to.be.revertedWith("Marketplace: Cannot list more pods than in the plot.");
+    });
+
+    it('Does not list since the price of listing is 0', async function () {
+      await expect(this.marketplace.connect(user2).list('1000','1000', true,'0','2000')).to.be.revertedWith("Marketplace: Cannot list for a value of 0.");
+    })
+
+    it('Does not list since expiration too short', async function () {
+      await expect(this.marketplace.connect(user2).list('1000','1000',true,'1','0')).to.be.revertedWith("Marketplace: Expiration too short.");
+    })
+
+    it('Does not list since expiration too long', async function() {
+      await expect(this.marketplace.connect(user2).list('1000','1000', true,'1','4000')).to.be.revertedWith("Marketplace: Expiration too long.");
+    });
+
+    it('Emits a second List event', async function () {
+      await expect(this.marketplace.connect(user2).list('1000','1000', true,'1','2000')).to.emit(this.marketplace, 'CreateListing').withArgs(user2Address, '1000','1000', true, 1, '2000');
+    });
+
+    it('Lists a product from a second wallet', async function () {
+      const listing = await this.marketplace.listing(1000);
+      expect(listing.price).to.equal(1);
+      expect(listing.amount).to.equal(1000);
+      expect(listing.expiry).to.equal(2000);
+      expect(listing.inEth).to.equal(true);
+    });
+
+    it('Lists a product for longer time', async function () {
+      await expect(this.marketplace.connect(user).list('3000','750',true,'1','3250')).to.emit(this.marketplace, 'CreateListing').withArgs(userAddress,'2000','750',true,1,'3250');
+    })
+
+    it('Emits List event for half a plot', async function() {
+      await expect(this.marketplace.connect(user).list('2000','500',true,'1','3000')).to.emit(this.marketplace, 'CreateListing').withArgs(userAddress,'2000','500',true,1,'3000');
+    })
+
+    it('Lists the half plot', async function() {
+      const listing = await this.marketplace.listing(2000);
+      expect(listing.price).to.equal(1);
+      expect(listing.amount).to.equal(500);
+      expect(listing.expiry).to.equal(3000);
+      expect(listing.inEth).to.equal(true);
+    })
   });
 
 });
