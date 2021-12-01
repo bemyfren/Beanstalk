@@ -24,7 +24,6 @@ contract GovernanceFacet is VotingBooth {
     event Vote(address indexed account, uint32 indexed bip, uint256 roots);
     event VoteList(address indexed account, uint32[] indexed bips, bool[] votes, uint256 roots);
     event Unvote(address indexed account, uint32 indexed bip, uint256 roots);
-    event UnvoteList(address indexed account, uint32[] indexed bips, uint256 roots);
     event Commit(address indexed account, uint32 indexed bip);
     event Incentivization(address indexed account, uint256 beans);
     event Pause(address account, uint256 timestamp);
