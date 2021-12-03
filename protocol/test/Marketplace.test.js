@@ -34,34 +34,31 @@ describe('Marketplace', function () {
     await this.season.siloSunrise(0)
   });
 
-  describe("List Plot", async function () {
+  describe("List single Plot", async function() {
     beforeEach (async function () {
-      await this.field.incrementTotalSoilEE('10000');
+      await this.field.incrementTotalSoilEE('2000');
       await this.field.connect(user).sowBeans('1000');
       await this.field.connect(user2).sowBeans('1000');
-      await this.field.connect(user).sowBeans('1000');
-      await this.field.connect(user).sowBeans('1500');
-      await this.field.connect(user2).sowBeans('750');
-
       this.result = await this.marketplace.connect(user).list('0','1000',true,'1','1000');
     });
-
     it('Emits a List event', async function () {
-      expect(this.result).to.emit(this.marketplace, 'CreateListing').withArgs(userAddress, '0', 1000, true, 1, 1000);
+      expect(this.result).to.emit(this.marketplace, 'CreateListing').withArgs(userAddress,'0','1000',true,'1','1000');
     });
-
-    it('Lists the product', async function () {
+    it('Product is listed in Listing struct', async function () {
       const listing = await this.marketplace.listing(0);
       expect(listing.price).to.equal(1);
       expect(listing.amount).to.equal(1000);
       expect(listing.expiry).to.equal(1000);
       expect(listing.inEth).to.equal(true);
     });
-
-    it('Does not list since does not own the plot', async function () {
-      await expect(this.marketplace.connect(user2).list('0','1000',true,'1','2000')).to.be.revertedWith("Field: Plot not owned by user.");
+    it('Reverts as user1 does not own user2 plot', async function () {
+      await expect(this.marketplace.connect(user).list('1000','1000',true,'1','1000')).to.be.revertedWith("Field: Plot not owned by user.");
     });
-
+    /*
+    it('Reverts as user1 has already listed the full plot', async function () {
+      await expect(this.marketplace.connect(user).list('0','1000',true,'1','1000')).to.be.revertedWith("Marketplace: Plot is already listed.");
+    })
+    */
     it('Does not list since wants to list zero pods', async function () {
       await expect(this.marketplace.connect(user2).list('1000','0',true,'1','2000')).to.be.revertedWith("Marketplace: Must list atleast one pod from the plot.");
     });
@@ -80,6 +77,20 @@ describe('Marketplace', function () {
 
     it('Does not list since expiration too long', async function() {
       await expect(this.marketplace.connect(user2).list('1000','1000', true,'1','4000')).to.be.revertedWith("Marketplace: Expiration too long.");
+    });
+  });
+
+/*
+  describe("List Plot (more than one)", async function () {
+    beforeEach (async function () {
+      await this.field.incrementTotalSoilEE('10000');
+      await this.field.connect(user).sowBeans('1000');
+      await this.field.connect(user2).sowBeans('1000');
+      await this.field.connect(user).sowBeans('1000');
+      await this.field.connect(user).sowBeans('1500');
+      await this.field.connect(user2).sowBeans('750');
+
+      this.result = await this.marketplace.connect(user).list('0','1000',true,'1','1000');
     });
 
     it('Emits a second List event', async function () {
@@ -110,5 +121,6 @@ describe('Marketplace', function () {
       expect(listing.inEth).to.equal(true);
     })
   });
+  */
 
 });

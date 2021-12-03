@@ -18,7 +18,7 @@ import "../FieldFacet/FieldFacet.sol";
 
 contract MarketplaceFacet {
 
-    AppStorage private s;
+    AppStorage internal s;
 
     using SafeMath for uint256;
 
@@ -43,6 +43,8 @@ contract MarketplaceFacet {
         require(_amount > 0, "Marketplace: Must list atleast one pod from the plot.");
         require(amount >= _amount, "Marketplace: Cannot list more pods than in the plot.");
         require(price > 0, "Marketplace: Cannot list for a value of 0.");
+        //if (s.listings[index].amount > amount-_amount) revert("Marketplace: Plot is already listed.");
+        //require(s.listings[index].amount <= amount-_amount, "Marketplace: Plot already listed for sale.");
 
         // EXPIRY LOGIC
         // index - currentHarvestableIndex = place in queue.
@@ -51,7 +53,7 @@ contract MarketplaceFacet {
         uint currentHarvestableIndex = s.f.harvestable;
         uint latestHarvestableIndex = s.f.pods;
 
-        require(expiry >= currentHarvestableIndex, "Marketplace: Expiration too short.");
+        require(expiry >= index-currentHarvestableIndex, "Marketplace: Expiration too short.");
         require(expiry <= latestHarvestableIndex, "Marketplace: Expiration too long.");
 
         s.listings[index].expiry = expiry;
@@ -64,6 +66,10 @@ contract MarketplaceFacet {
 
     function listing (uint256 index) public view returns (Storage.Listing memory) {
        return s.listings[index];
+    }
+
+    function clearListings (uint256 index) public {
+      delete s.listings[index];
     }
 
     function buyListing(uint index, address payable seller) public payable {
@@ -80,13 +86,13 @@ contract MarketplaceFacet {
         uint price = listing.price;
 
         if (listing.inEth) {
-          require(msg.value >= price, "Field: Value sent too low");
+          require(msg.value >= price, "Marketplace: Value sent too low");
           (bool success, ) = seller.call{value: price}("");
           require(success, "WETH: ETH transfer failed");
         }
         else {
           bool success = bean().transferFrom(msg.sender, seller, price);
-          require(success, "Bean transfer failed");
+          require(success, "BEAN: Bean transfer failed");
         }
 
         FieldFacet(address(this)).transferPlot(seller, msg.sender, index, 0, listing.amount);
